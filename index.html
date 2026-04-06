@@ -145,7 +145,7 @@
     }
 
     .tile.removing {
-      animation: tileRemove 0.32s ease forwards;
+      animation: tileRemove 0.32s ease forwards !important;
       pointer-events: none;
     }
 
@@ -155,7 +155,11 @@
     }
 
     .tile.hint-glow {
-      animation: hintPulse 0.55s infinite alternate;
+      animation: hintPulse 0.55s infinite alternate !important;
+    }
+
+    .tile.selected {
+      animation: none;
     }
 
     @keyframes hintPulse {
@@ -548,13 +552,13 @@
       80%     { transform: translate(-10px,-6px) rotate(-13deg); }
     }
 
-    .tile-inner.shift-1 { animation: tileShiftH    4s   ease-in-out infinite; }
-    .tile-inner.shift-2 { animation: tileShiftV    4s   ease-in-out infinite; }
-    .tile-inner.shift-3 { animation: tileShiftR    4.5s ease-in-out infinite; }
-    .tile-inner.shift-4 { animation: tileShiftHV   3.5s ease-in-out infinite; }
-    .tile-inner.shift-5 { animation: tileShiftHVR1 3s   ease-in-out infinite; }
-    .tile-inner.shift-6 { animation: tileShiftHVR2 2.5s ease-in-out infinite; }
-    .tile-inner.shift-7 { animation: tileShiftHVR3 2s   ease-in-out infinite; }
+    .tile.shift-1 { animation: tileShiftH    4s   ease-in-out infinite; }
+    .tile.shift-2 { animation: tileShiftV    4s   ease-in-out infinite; }
+    .tile.shift-3 { animation: tileShiftR    4.5s ease-in-out infinite; }
+    .tile.shift-4 { animation: tileShiftHV   3.5s ease-in-out infinite; }
+    .tile.shift-5 { animation: tileShiftHVR1 3s   ease-in-out infinite; }
+    .tile.shift-6 { animation: tileShiftHVR2 2.5s ease-in-out infinite; }
+    .tile.shift-7 { animation: tileShiftHVR3 2s   ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -928,14 +932,14 @@
           t.className = 'tile empty';
         } else {
           t.className = 'tile';
+          if (shiftType > 0) {
+            t.classList.add('shift-' + shiftType);
+            // Stagger start phases so tiles move out-of-sync
+            t.style.animationDelay = -((r * 3 + c * 7) % 10) * 0.4 + 's';
+          }
           const inner = document.createElement('span');
           inner.className = 'tile-inner';
           inner.textContent = ITEMS[v];
-          if (shiftType > 0) {
-            inner.classList.add('shift-' + shiftType);
-            // Stagger start phases so tiles move out-of-sync
-            inner.style.animationDelay = -((r * 3 + c * 7) % 10) * 0.4 + 's';
-          }
           t.appendChild(inner);
           t.dataset.r = r;
           t.dataset.c = c;
