@@ -507,7 +507,7 @@
     .world-1 .map-node.completed { border-color:#6bcb77; background:rgba(107,203,119,.18); }
     .world-2 .map-node.completed { border-color:#4d96ff; background:rgba(77,150,255,.18); }
     .world-3 .map-node.completed { border-color:#f093fb; background:rgba(240,147,251,.18); }
-    /* ── Tile inner shift animations (applied per-level) ── */
+    /* ── Tile inner wrapper ── */
     .tile-inner {
       display: flex;
       align-items: center;
@@ -515,50 +515,6 @@
       width: 100%;
       height: 100%;
     }
-
-    @keyframes tileShiftH {
-      0%,100% { transform: translateX(0); }
-      50%     { transform: translateX(6px); }
-    }
-    @keyframes tileShiftV {
-      0%,100% { transform: translateY(0); }
-      50%     { transform: translateY(6px); }
-    }
-    @keyframes tileShiftR {
-      0%,100% { transform: rotate(0deg); }
-      50%     { transform: rotate(9deg); }
-    }
-    @keyframes tileShiftHV {
-      0%,100% { transform: translate(0,0); }
-      25%     { transform: translate(6px,4px); }
-      75%     { transform: translate(-6px,-4px); }
-    }
-    @keyframes tileShiftHVR1 {
-      0%,100% { transform: translate(0,0) rotate(0deg); }
-      33%     { transform: translate(5px,5px) rotate(7deg); }
-      66%     { transform: translate(-5px,5px) rotate(-7deg); }
-    }
-    @keyframes tileShiftHVR2 {
-      0%,100% { transform: translate(0,0) rotate(0deg); }
-      25%     { transform: translate(8px,6px) rotate(10deg); }
-      50%     { transform: translate(0,8px) rotate(-8deg); }
-      75%     { transform: translate(-8px,6px) rotate(10deg); }
-    }
-    @keyframes tileShiftHVR3 {
-      0%,100% { transform: translate(0,0) rotate(0deg); }
-      20%     { transform: translate(10px,8px) rotate(13deg); }
-      40%     { transform: translate(-8px,10px) rotate(-11deg); }
-      60%     { transform: translate(10px,-8px) rotate(13deg); }
-      80%     { transform: translate(-10px,-6px) rotate(-13deg); }
-    }
-
-    .tile.shift-1 { animation: tileShiftH    4s   ease-in-out infinite; }
-    .tile.shift-2 { animation: tileShiftV    4s   ease-in-out infinite; }
-    .tile.shift-3 { animation: tileShiftR    4.5s ease-in-out infinite; }
-    .tile.shift-4 { animation: tileShiftHV   3.5s ease-in-out infinite; }
-    .tile.shift-5 { animation: tileShiftHVR1 3s   ease-in-out infinite; }
-    .tile.shift-6 { animation: tileShiftHVR2 2.5s ease-in-out infinite; }
-    .tile.shift-7 { animation: tileShiftHVR3 2s   ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -582,6 +538,10 @@
     <div class="stat-box">
       <div class="stat-value" id="remain-val">0</div>
       <div class="stat-label">Pairs Left</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="shift-val">—</div>
+      <div class="stat-label">Shift</div>
     </div>
   </div>
 
@@ -719,10 +679,33 @@
     { ts: 44, emoji: 24, gap: 3, gpad:  8 }, // world 3: 10×10
   ];
 
-  // Shift type per level (0 = none, 1-7 = progressively harder animations)
-  // Level 1: none → level 2-3: H → level 4-5: V → level 6-7: R → level 8-9: H+V →
-  // level 10-11: H+V+R slow → level 12-13: H+V+R medium → level 14+: H+V+R fast
-  const SHIFT_TYPES = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7];
+  // Shift direction per level — after a pair is removed, tiles slide to fill the gap.
+  // none: static  up: tiles below the gap slide up  down: tiles above slide down
+  // left: tiles right of gap slide left  right: tiles left of gap slide right
+  const SHIFT_DIRS = [
+    'none',  // level  1 – no shift
+    'up',    // level  2
+    'down',  // level  3
+    'left',  // level  4
+    'right', // level  5
+    'up',    // level  6
+    'left',  // level  7
+    'down',  // level  8
+    'right', // level  9
+    'up',    // level 10
+    'right', // level 11
+    'down',  // level 12
+    'left',  // level 13
+    'up',    // level 14
+    'right', // level 15
+    'down',  // level 16
+    'left',  // level 17
+    'up',    // level 18
+    'right', // level 19
+    'down',  // level 20
+  ];
+
+  const SHIFT_ICONS = { none: '—', up: '⬆', down: '⬇', left: '⬅', right: '➡' };
 
   // ════════════════════════════════════════════════════
   //  STATE
@@ -922,7 +905,6 @@
     const gridEl = document.getElementById('grid');
     gridEl.style.gridTemplateColumns = `repeat(${cols}, var(--ts))`;
     gridEl.innerHTML = '';
-    const shiftType = SHIFT_TYPES[level] || 0;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -932,11 +914,6 @@
           t.className = 'tile empty';
         } else {
           t.className = 'tile';
-          if (shiftType > 0) {
-            t.classList.add('shift-' + shiftType);
-            // Stagger start phases so tiles move out-of-sync
-            t.style.animationDelay = -((r * 3 + c * 7) % 10) * 0.4 + 's';
-          }
           const inner = document.createElement('span');
           inner.className = 'tile-inner';
           inner.textContent = ITEMS[v];
@@ -954,6 +931,9 @@
     // Update SVG size to match wrapper
     syncSvg();
     updateStats();
+    // Update shift direction indicator
+    const dir = SHIFT_DIRS[level] || 'none';
+    document.getElementById('shift-val').textContent = SHIFT_ICONS[dir] || '—';
   }
 
   function syncSvg() {
@@ -1080,6 +1060,7 @@
           setTimeout(() => {
             grid[r1][c1] = -1;
             grid[r2][c2] = -1;
+            shiftGrid();
             score += 100;
             document.getElementById('score-val').textContent = score;
             renderGrid();
@@ -1148,6 +1129,46 @@
     clearHint();
     renderGrid();
     if (!anyPair()) doShuffle(); // recurse until valid state
+  }
+
+  // Shift remaining tiles in the grid to fill empty spaces according to the
+  // current level's direction.  Called once after every successful pair removal.
+  function shiftGrid() {
+    const { rows, cols } = LEVELS[level];
+    const dir = SHIFT_DIRS[level] || 'none';
+
+    if (dir === 'up') {
+      // Each column: compact non-empty values toward row 0
+      for (let c = 0; c < cols; c++) {
+        const vals = [];
+        for (let r = 0; r < rows; r++) if (grid[r][c] !== -1) vals.push(grid[r][c]);
+        for (let r = 0; r < rows; r++) grid[r][c] = r < vals.length ? vals[r] : -1;
+      }
+    } else if (dir === 'down') {
+      // Each column: compact non-empty values toward the last row
+      for (let c = 0; c < cols; c++) {
+        const vals = [];
+        for (let r = 0; r < rows; r++) if (grid[r][c] !== -1) vals.push(grid[r][c]);
+        const empty = rows - vals.length;
+        for (let r = 0; r < rows; r++) grid[r][c] = r < empty ? -1 : vals[r - empty];
+      }
+    } else if (dir === 'left') {
+      // Each row: compact non-empty values toward col 0
+      for (let r = 0; r < rows; r++) {
+        const vals = [];
+        for (let c = 0; c < cols; c++) if (grid[r][c] !== -1) vals.push(grid[r][c]);
+        for (let c = 0; c < cols; c++) grid[r][c] = c < vals.length ? vals[c] : -1;
+      }
+    } else if (dir === 'right') {
+      // Each row: compact non-empty values toward the last col
+      for (let r = 0; r < rows; r++) {
+        const vals = [];
+        for (let c = 0; c < cols; c++) if (grid[r][c] !== -1) vals.push(grid[r][c]);
+        const empty = cols - vals.length;
+        for (let c = 0; c < cols; c++) grid[r][c] = c < empty ? -1 : vals[c - empty];
+      }
+    }
+    // 'none': no change
   }
 
   function triggerAutoShuffle() {
