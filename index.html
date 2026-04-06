@@ -589,7 +589,7 @@
       <div class="card-sub" id="lose-sub"></div>
       <button class="btn-big" onclick="newGame()">Try Again</button>
       <br>
-      <button class="btn-big secondary" style="margin-top:10px" onclick="showMapFromWin()">🗺️ Level Map</button>
+      <button class="btn-big secondary" onclick="showMapFromWin()">🗺️ Level Map</button>
     </div>
   </div>
 
@@ -731,7 +731,10 @@
   function loadProgress() {
     try {
       const u = localStorage.getItem('fv_unlocked');
-      if (u !== null) unlockedLevel = Math.min(parseInt(u) || 0, LEVELS.length - 1);
+      if (u !== null) {
+        const parsed = parseInt(u, 10);
+        if (!isNaN(parsed) && parsed >= 0) unlockedLevel = Math.min(parsed, LEVELS.length - 1);
+      }
       const s = localStorage.getItem('fv_stars');
       if (s) {
         const arr = JSON.parse(s);
@@ -1169,11 +1172,14 @@
         const isComplete = levelStars[globalIdx] > 0;
 
         const row = document.createElement('div');
-        row.className = `path-row ${rowPositions[i]}${i > 0 ? ' turn-connector' : ''}`;
+        const connectorClass = i > 0 ? ' turn-connector' : '';
+        row.className = `path-row ${rowPositions[i]}${connectorClass}`;
 
         const node = document.createElement('div');
-        node.className = 'map-node' +
-          (isLocked ? ' locked' : isComplete ? ' completed' : ' unlocked');
+        let nodeState = 'unlocked';
+        if (isLocked)   nodeState = 'locked';
+        else if (isComplete) nodeState = 'completed';
+        node.className = `map-node ${nodeState}`;
 
         if (isLocked) {
           node.innerHTML = `<span class="node-lock">🔒</span>`;
