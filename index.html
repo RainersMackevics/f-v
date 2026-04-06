@@ -74,29 +74,21 @@
       50%       { opacity: 0.25; }
     }
 
-    /* ── Level selector ── */
-    .level-select {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .level-btn {
+    /* ── Map open button ── */
+    .map-open-btn {
       padding: 7px 18px;
-      border: 2px solid rgba(255,255,255,0.2);
+      border: 2px solid rgba(255,255,255,0.25);
       border-radius: 20px;
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.1);
       color: #fff;
       font-size: 0.88em;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.2s, border-color 0.2s, color 0.2s;
+      margin-bottom: 8px;
     }
-
-    .level-btn:hover { background: rgba(255,255,255,0.16); }
-
-    .level-btn.active {
-      background: rgba(255,217,61,0.22);
+    .map-open-btn:hover {
+      background: rgba(255,255,255,0.2);
       border-color: #ffd93d;
       color: #ffd93d;
     }
@@ -231,6 +223,8 @@
     .btn-hint    { background: linear-gradient(135deg,#f093fb,#f5576c); color:#fff; }
     .btn-shuffle { background: linear-gradient(135deg,#4facfe,#00f2fe); color:#0a2a3a; }
     .btn-new     { background: linear-gradient(135deg,#6bcb77,#2e8b57); color:#fff; }
+    .btn-pause   { background: linear-gradient(135deg,#f7971e,#ffd200); color:#1a1a1a; }
+    .btn-pause.is-paused { background: linear-gradient(135deg,#6bcb77,#2e8b57); color:#fff; }
 
     /* ── Overlays ── */
     .overlay {
@@ -283,6 +277,15 @@
       box-shadow: 0 8px 22px rgba(107,203,119,0.45);
     }
 
+    .btn-big.secondary {
+      background: linear-gradient(135deg,#4facfe,#00f2fe);
+      color: #0a2a3a;
+      margin-top: 10px;
+    }
+    .btn-big.secondary:hover {
+      box-shadow: 0 8px 22px rgba(79,172,254,0.45);
+    }
+
     /* ── Toast ── */
     .toast {
       position: fixed;
@@ -321,6 +324,186 @@
       border-radius: 3px;
       transition: width 0.3s ease;
     }
+
+    /* ── Pause overlay ── */
+    .pause-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 950;
+      backdrop-filter: blur(10px);
+    }
+    .pause-overlay.hidden { display: none; }
+    .pause-title {
+      font-size: clamp(2em, 8vw, 3.5em);
+      font-weight: 900;
+      letter-spacing: 6px;
+      margin-bottom: 14px;
+      background: linear-gradient(90deg, #f7971e, #ffd200);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .pause-sub {
+      font-size: 1em;
+      opacity: 0.6;
+      margin-bottom: 32px;
+    }
+
+    /* ── Level Map overlay ── */
+    .map-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(160deg, #0d0b1e 0%, #1a2744 50%, #0d1f1a 100%);
+      overflow-y: auto;
+      z-index: 800;
+      padding: 24px 16px 60px;
+    }
+    .map-overlay.hidden { display: none; }
+
+    .map-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .map-header h2 {
+      font-size: clamp(1.5em, 5vw, 2em);
+      font-weight: 800;
+      background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .map-header p {
+      opacity: 0.55;
+      font-size: 0.88em;
+      margin-top: 4px;
+    }
+
+    .world-section {
+      max-width: 380px;
+      margin: 0 auto 36px;
+    }
+
+    .world-banner {
+      border-radius: 18px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+    .world-banner .wb-emoji { font-size: 1.8em; }
+    .world-banner .wb-name  { font-size: 1.1em; }
+    .world-banner .wb-diff  { font-size: 0.75em; opacity: 0.7; margin-top: 2px; }
+
+    .world-path {
+      display: flex;
+      flex-direction: column-reverse;
+      position: relative;
+      padding: 0 20px;
+    }
+
+    .path-row {
+      display: flex;
+      align-items: center;
+      height: 88px;
+      position: relative;
+    }
+    .path-row.align-left  { justify-content: flex-start; }
+    .path-row.align-right { justify-content: flex-end; }
+
+    /* Vertical dotted connector */
+    .path-row::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      width: 3px;
+      height: 88px;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.25) 0px,
+        rgba(255,255,255,0.25) 6px,
+        transparent 6px,
+        transparent 12px
+      );
+    }
+    .path-row.align-left::after  { left: 51px; }
+    .path-row.align-right::after { right: 51px; }
+    .path-row:last-child::after  { display: none; }
+
+    /* Horizontal connector for zigzag turns */
+    .path-row.turn-connector::before {
+      content: '';
+      position: absolute;
+      top: 44px;
+      left: 54px;
+      right: 54px;
+      height: 3px;
+      background: repeating-linear-gradient(
+        to right,
+        rgba(255,255,255,0.25) 0px,
+        rgba(255,255,255,0.25) 6px,
+        transparent 6px,
+        transparent 12px
+      );
+    }
+
+    .map-node {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: transform 0.2s, box-shadow 0.2s;
+      user-select: none;
+      position: relative;
+      z-index: 2;
+      flex-shrink: 0;
+    }
+    .map-node:hover:not(.locked) { transform: scale(1.12); }
+    .map-node.locked {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.12);
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+    .map-node.unlocked {
+      background: rgba(255,217,61,0.18);
+      border-color: #ffd93d;
+      box-shadow: 0 0 20px rgba(255,217,61,0.35);
+      animation: nodePulse 1.8s ease-in-out infinite;
+    }
+    .map-node.completed {
+      background: rgba(107,203,119,0.2);
+      border-color: #6bcb77;
+      box-shadow: 0 0 12px rgba(107,203,119,0.25);
+    }
+    @keyframes nodePulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(255,217,61,0.25); }
+      50%       { box-shadow: 0 0 28px rgba(255,217,61,0.65); }
+    }
+    .node-num   { font-size: 1.15em; font-weight: 800; line-height: 1; }
+    .node-stars { font-size: 0.72em; line-height: 1; margin-top: 3px; letter-spacing: -2px; }
+    .node-lock  { font-size: 1.4em; }
+
+    /* World accent colors */
+    .world-0 .world-banner { background: linear-gradient(135deg,rgba(255,107,107,.22),rgba(255,217,61,.12)); border: 1px solid rgba(255,107,107,.3); }
+    .world-1 .world-banner { background: linear-gradient(135deg,rgba(107,203,119,.22),rgba(77,150,255,.12)); border: 1px solid rgba(107,203,119,.3); }
+    .world-2 .world-banner { background: linear-gradient(135deg,rgba(77,150,255,.22),rgba(107,203,119,.12)); border: 1px solid rgba(77,150,255,.3); }
+    .world-3 .world-banner { background: linear-gradient(135deg,rgba(240,147,251,.22),rgba(245,87,108,.12)); border: 1px solid rgba(240,147,251,.3); }
+    .world-0 .map-node.completed { border-color:#ff6b6b; background:rgba(255,107,107,.18); }
+    .world-1 .map-node.completed { border-color:#6bcb77; background:rgba(107,203,119,.18); }
+    .world-2 .map-node.completed { border-color:#4d96ff; background:rgba(77,150,255,.18); }
+    .world-3 .map-node.completed { border-color:#f093fb; background:rgba(240,147,251,.18); }
   </style>
 </head>
 <body>
@@ -352,12 +535,8 @@
     <div class="progress-bar" id="progress-bar" style="width:100%"></div>
   </div>
 
-  <!-- Level selector -->
-  <div class="level-select">
-    <button class="level-btn active" id="lvlbtn-0" onclick="selectLevel(0)">🌱 Easy</button>
-    <button class="level-btn"        id="lvlbtn-1" onclick="selectLevel(1)">🌿 Medium</button>
-    <button class="level-btn"        id="lvlbtn-2" onclick="selectLevel(2)">🌳 Hard</button>
-  </div>
+  <!-- Map open button -->
+  <button class="map-open-btn" onclick="showMap()">🗺️ Level Map</button>
 
   <!-- Grid area -->
   <div class="game-wrapper" id="wrapper">
@@ -367,8 +546,9 @@
 
   <!-- Controls -->
   <div class="controls">
-    <button class="btn btn-hint"    id="btn-hint"    onclick="useHint()">💡 Hint <small>(-50)</small></button>
-    <button class="btn btn-shuffle" id="btn-shuffle" onclick="useShuffle()">🔀 Shuffle <small>(-100)</small></button>
+    <button class="btn btn-hint"    id="btn-hint"    onclick="useHint()">💡 Hint <small>(-15s)</small></button>
+    <button class="btn btn-shuffle" id="btn-shuffle" onclick="useShuffle()">🔀 Shuffle <small>(-30s)</small></button>
+    <button class="btn btn-pause"   id="btn-pause"   onclick="togglePause()">⏸ Pause</button>
     <button class="btn btn-new"                      onclick="newGame()">▶ New Game</button>
   </div>
 
@@ -396,6 +576,8 @@
       <div class="card-title" style="color:#6bcb77" id="win-title">Level Complete!</div>
       <div class="card-sub" id="win-sub"></div>
       <button class="btn-big" id="btn-next" onclick="nextLevel()">Next Level →</button>
+      <br>
+      <button class="btn-big secondary" onclick="showMapFromWin()">🗺️ Level Map</button>
     </div>
   </div>
 
@@ -406,7 +588,25 @@
       <div class="card-title" style="color:#ff6b6b">Time's Up!</div>
       <div class="card-sub" id="lose-sub"></div>
       <button class="btn-big" onclick="newGame()">Try Again</button>
+      <br>
+      <button class="btn-big secondary" style="margin-top:10px" onclick="showMapFromWin()">🗺️ Level Map</button>
     </div>
+  </div>
+
+  <!-- Pause overlay -->
+  <div class="pause-overlay hidden" id="ov-pause">
+    <div class="pause-title">⏸ PAUSED</div>
+    <div class="pause-sub">Game is paused — take a breather!</div>
+    <button class="btn-big" onclick="togglePause()">▶ Resume</button>
+  </div>
+
+  <!-- Level Map overlay -->
+  <div class="map-overlay hidden" id="ov-map">
+    <div class="map-header">
+      <h2>🗺️ Level Map</h2>
+      <p id="map-stars-total">⭐ 0 / 60 stars collected</p>
+    </div>
+    <div id="world-list"></div>
   </div>
 
   <script>
@@ -421,18 +621,47 @@
     '🥭','🥑',                                   // 24-25
   ]; // 26 types
 
-  // rows × cols must equal types × 4  (4 tiles per type)
-  const LEVELS = [
-    { rows: 6,  cols:  8, types: 12, time: 120 }, // 48 tiles
-    { rows: 8,  cols: 10, types: 20, time: 180 }, // 80 tiles
-    { rows: 10, cols: 10, types: 25, time: 240 }, // 100 tiles
+  const WORLDS = [
+    { name: 'Fruity Grove',  emoji: '🌸', diff: 'Easy'   },
+    { name: 'Veggie Garden', emoji: '🌿', diff: 'Medium' },
+    { name: 'Forest Market', emoji: '🌲', diff: 'Hard'   },
+    { name: 'Mountain Peak', emoji: '🏔️', diff: 'Expert' },
   ];
 
-  // Tile display sizes per level
+  // 20 levels across 4 worlds (5 per world). rows × cols must equal types × 4
+  const LEVELS = [
+    // World 0: Fruity Grove — 6×8, 12 types
+    { rows:6,  cols:8,  types:12, time:120, world:0 },
+    { rows:6,  cols:8,  types:12, time:110, world:0 },
+    { rows:6,  cols:8,  types:12, time:105, world:0 },
+    { rows:6,  cols:8,  types:12, time:100, world:0 },
+    { rows:6,  cols:8,  types:12, time: 90, world:0 },
+    // World 1: Veggie Garden — 8×8, 16 types
+    { rows:8,  cols:8,  types:16, time:160, world:1 },
+    { rows:8,  cols:8,  types:16, time:150, world:1 },
+    { rows:8,  cols:8,  types:16, time:140, world:1 },
+    { rows:8,  cols:8,  types:16, time:130, world:1 },
+    { rows:8,  cols:8,  types:16, time:120, world:1 },
+    // World 2: Forest Market — 8×10, 20 types
+    { rows:8,  cols:10, types:20, time:200, world:2 },
+    { rows:8,  cols:10, types:20, time:185, world:2 },
+    { rows:8,  cols:10, types:20, time:170, world:2 },
+    { rows:8,  cols:10, types:20, time:155, world:2 },
+    { rows:8,  cols:10, types:20, time:140, world:2 },
+    // World 3: Mountain Peak — 10×10, 25 types
+    { rows:10, cols:10, types:25, time:260, world:3 },
+    { rows:10, cols:10, types:25, time:240, world:3 },
+    { rows:10, cols:10, types:25, time:220, world:3 },
+    { rows:10, cols:10, types:25, time:200, world:3 },
+    { rows:10, cols:10, types:25, time:180, world:3 },
+  ];
+
+  // Tile display sizes — one entry per world
   const SIZES = [
-    { ts: 56, emoji: 30, gap: 4, gpad: 10 },
-    { ts: 52, emoji: 28, gap: 4, gpad: 10 },
-    { ts: 48, emoji: 26, gap: 4, gpad:  8 },
+    { ts: 56, emoji: 30, gap: 4, gpad: 10 }, // world 0: 6×8
+    { ts: 52, emoji: 28, gap: 4, gpad: 10 }, // world 1: 8×8
+    { ts: 48, emoji: 26, gap: 4, gpad:  8 }, // world 2: 8×10
+    { ts: 44, emoji: 24, gap: 3, gpad:  8 }, // world 3: 10×10
   ];
 
   // ════════════════════════════════════════════════════
@@ -445,8 +674,13 @@
   let timeLeft   = 0;
   let timerID    = null;
   let gameActive = false;
+  let paused     = false;
   let totalTiles = 0;
   let hintHandles = { tiles: null, tid: null };
+
+  // Progress (persisted to localStorage)
+  let unlockedLevel = 0;                            // highest playable level index
+  let levelStars    = new Array(LEVELS.length).fill(0);
 
   // ════════════════════════════════════════════════════
   //  UTILITIES
@@ -471,6 +705,40 @@
 
   function formatTime(s) {
     return `${(s / 60 | 0)}:${String(s % 60).padStart(2,'0')}`;
+  }
+
+  function starsForTime(timeRemaining, totalTime) {
+    const pct = timeRemaining / totalTime;
+    if (pct > 0.5) return 3;
+    if (pct > 0.2) return 2;
+    return 1;
+  }
+
+  function starsText(n) {
+    return '⭐'.repeat(n) + '☆'.repeat(3 - n);
+  }
+
+  // ════════════════════════════════════════════════════
+  //  PERSISTENCE
+  // ════════════════════════════════════════════════════
+  function saveProgress() {
+    try {
+      localStorage.setItem('fv_unlocked', String(unlockedLevel));
+      localStorage.setItem('fv_stars',    JSON.stringify(levelStars));
+    } catch (_) {}
+  }
+
+  function loadProgress() {
+    try {
+      const u = localStorage.getItem('fv_unlocked');
+      if (u !== null) unlockedLevel = Math.min(parseInt(u) || 0, LEVELS.length - 1);
+      const s = localStorage.getItem('fv_stars');
+      if (s) {
+        const arr = JSON.parse(s);
+        if (Array.isArray(arr))
+          arr.forEach((v, i) => { if (i < levelStars.length) levelStars[i] = v || 0; });
+      }
+    } catch (_) {}
   }
 
   // ════════════════════════════════════════════════════
@@ -570,7 +838,7 @@
   //  RENDERING
   // ════════════════════════════════════════════════════
   function applySize() {
-    const sz = SIZES[level];
+    const sz = SIZES[LEVELS[level].world];
     // Clamp tile size to viewport width
     const { cols } = LEVELS[level];
     const vw = window.innerWidth;
@@ -700,7 +968,7 @@
   //  TILE CLICK
   // ════════════════════════════════════════════════════
   function onTileClick(e) {
-    if (!gameActive) return;
+    if (!gameActive || paused) return;
     const t = e.currentTarget;
     const r = +t.dataset.r;
     const c = +t.dataset.c;
@@ -771,12 +1039,14 @@
   }
 
   function useHint() {
-    if (!gameActive) return;
+    if (!gameActive || paused) return;
     clearHint();
     const pair = anyPair();
     if (!pair) return;
-    score = Math.max(0, score - 50);
-    document.getElementById('score-val').textContent = score;
+    // Cost: -15 seconds
+    timeLeft = Math.max(0, timeLeft - 15);
+    document.getElementById('timer-val').textContent = formatTime(timeLeft);
+    if (timeLeft <= 20) document.getElementById('timer-box').classList.add('timer-warning');
     hintHandles.tiles = [pair.a, pair.b];
     hintHandles.tiles.forEach(({ r, c }) => {
       const el = tileEl(r, c);
@@ -786,9 +1056,11 @@
   }
 
   function useShuffle() {
-    if (!gameActive) return;
-    score = Math.max(0, score - 100);
-    document.getElementById('score-val').textContent = score;
+    if (!gameActive || paused) return;
+    // Cost: -30 seconds
+    timeLeft = Math.max(0, timeLeft - 30);
+    document.getElementById('timer-val').textContent = formatTime(timeLeft);
+    if (timeLeft <= 20) document.getElementById('timer-box').classList.add('timer-warning');
     doShuffle();
   }
 
@@ -818,12 +1090,134 @@
   }
 
   // ════════════════════════════════════════════════════
+  //  PAUSE / RESUME
+  // ════════════════════════════════════════════════════
+  function togglePause() {
+    if (!gameActive) return;
+    paused = !paused;
+    const btn = document.getElementById('btn-pause');
+    if (paused) {
+      clearInterval(timerID);
+      timerID = null;
+      btn.textContent = '▶ Resume';
+      btn.classList.add('is-paused');
+      show('ov-pause');
+    } else {
+      hide('ov-pause');
+      btn.textContent = '⏸ Pause';
+      btn.classList.remove('is-paused');
+      timerID = setInterval(tick, 1000);
+    }
+  }
+
+  // ════════════════════════════════════════════════════
+  //  LEVEL MAP
+  // ════════════════════════════════════════════════════
+  function showMap() {
+    if (gameActive && !paused) togglePause();
+    renderLevelMap();
+    show('ov-map');
+  }
+
+  function hideMap() {
+    hide('ov-map');
+    if (gameActive && paused) togglePause();
+  }
+
+  function showMapFromWin() {
+    hide('ov-win');
+    hide('ov-lose');
+    renderLevelMap();
+    show('ov-map');
+  }
+
+  function renderLevelMap() {
+    const totalStars = levelStars.reduce((a, b) => a + b, 0);
+    document.getElementById('map-stars-total').textContent =
+      `⭐ ${totalStars} / ${LEVELS.length * 3} stars collected`;
+
+    const container = document.getElementById('world-list');
+    container.innerHTML = '';
+
+    const LEVELS_PER_WORLD = 5;
+    const rowPositions = ['align-left','align-right','align-left','align-right','align-left'];
+
+    for (let w = 0; w < WORLDS.length; w++) {
+      const wd        = WORLDS[w];
+      const firstIdx  = w * LEVELS_PER_WORLD;
+      const wLevels   = LEVELS.slice(firstIdx, firstIdx + LEVELS_PER_WORLD);
+
+      const section = document.createElement('div');
+      section.className = `world-section world-${w}`;
+
+      const banner = document.createElement('div');
+      banner.className = 'world-banner';
+      banner.innerHTML = `
+        <span class="wb-emoji">${wd.emoji}</span>
+        <div>
+          <div class="wb-name">${wd.name}</div>
+          <div class="wb-diff">${wd.diff} · ${wLevels[0].rows}×${wLevels[0].cols} grid</div>
+        </div>`;
+      section.appendChild(banner);
+
+      const pathEl = document.createElement('div');
+      pathEl.className = 'world-path';
+
+      wLevels.forEach((lc, i) => {
+        const globalIdx  = firstIdx + i;
+        const isLocked   = globalIdx > unlockedLevel;
+        const isComplete = levelStars[globalIdx] > 0;
+
+        const row = document.createElement('div');
+        row.className = `path-row ${rowPositions[i]}${i > 0 ? ' turn-connector' : ''}`;
+
+        const node = document.createElement('div');
+        node.className = 'map-node' +
+          (isLocked ? ' locked' : isComplete ? ' completed' : ' unlocked');
+
+        if (isLocked) {
+          node.innerHTML = `<span class="node-lock">🔒</span>`;
+        } else {
+          node.innerHTML = `<span class="node-num">${globalIdx + 1}</span>` +
+            (isComplete ? `<span class="node-stars">${starsText(levelStars[globalIdx])}</span>` : '');
+          node.addEventListener('click', () => {
+            hide('ov-map');
+            selectAndPlay(globalIdx);
+          });
+        }
+
+        row.appendChild(node);
+        pathEl.appendChild(row);
+      });
+
+      section.appendChild(pathEl);
+      container.appendChild(section);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-big secondary';
+    closeBtn.style.cssText = 'display:block; margin:24px auto 0;';
+    closeBtn.textContent = gameActive ? '↩ Back to Game' : '↩ Close';
+    closeBtn.addEventListener('click', hideMap);
+    container.appendChild(closeBtn);
+  }
+
+  // ════════════════════════════════════════════════════
   //  LEVEL / GAME FLOW
   // ════════════════════════════════════════════════════
   function selectLevel(idx) {
-    level = idx;
-    document.querySelectorAll('.level-btn').forEach((b, i) =>
-      b.classList.toggle('active', i === idx));
+    level = Math.max(0, Math.min(idx, LEVELS.length - 1));
+    document.getElementById('lvl-val').textContent = level + 1;
+  }
+
+  function selectAndPlay(idx) {
+    // Reset pause state cleanly before starting a new game from the map
+    paused = false;
+    hide('ov-pause');
+    document.getElementById('btn-pause').textContent = '⏸ Pause';
+    document.getElementById('btn-pause').classList.remove('is-paused');
+    selectLevel(idx);
+    newGame();
   }
 
   function startGame() {
@@ -836,6 +1230,12 @@
     clearHint();
     selected   = null;
     score      = 0;
+    paused     = false;
+
+    const pauseBtn = document.getElementById('btn-pause');
+    pauseBtn.textContent = '⏸ Pause';
+    pauseBtn.classList.remove('is-paused');
+    hide('ov-pause');
 
     applySize();
 
@@ -864,6 +1264,7 @@
   }
 
   function tick() {
+    if (paused) return;
     timeLeft--;
     document.getElementById('timer-val').textContent = formatTime(timeLeft);
     if (timeLeft <= 20)
@@ -879,15 +1280,26 @@
   function winLevel() {
     clearInterval(timerID);
     gameActive = false;
+    paused     = false;
+    hide('ov-pause');
+
     const bonus = timeLeft * 10;
     score += bonus;
     document.getElementById('score-val').textContent = score;
 
+    // Stars & progress
+    const stars = starsForTime(timeLeft, LEVELS[level].time);
+    if (stars > levelStars[level]) levelStars[level] = stars;
+    if (level >= unlockedLevel && level < LEVELS.length - 1) {
+      unlockedLevel = level + 1;
+    }
+    saveProgress();
+
     const last = level >= LEVELS.length - 1;
     document.getElementById('win-emoji').textContent = last ? '🏆' : '🎉';
-    document.getElementById('win-title').textContent = last ? 'You Won!' : 'Level Complete!';
+    document.getElementById('win-title').textContent = last ? 'All Levels Complete!' : 'Level Complete!';
     document.getElementById('win-sub').innerHTML =
-      `Score: <strong>${score}</strong><br>+${bonus} time bonus!`;
+      `${starsText(stars)}<br>Score: <strong>${score}</strong><br>+${bonus} time bonus!`;
 
     const nxt = document.getElementById('btn-next');
     if (last) {
@@ -909,6 +1321,11 @@
   window.addEventListener('resize', () => {
     if (gameActive) { applySize(); renderGrid(); }
   });
+
+  // ════════════════════════════════════════════════════
+  //  INIT
+  // ════════════════════════════════════════════════════
+  loadProgress();
   </script>
 </body>
 </html>
