@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fruits &amp; Vegetables Connect</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ── Title ── */
+    .game-title {
+      margin-top: 18px;
+      font-size: clamp(1.4em, 4vw, 2.2em);
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      user-select: none;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      gap: 10px;
+      margin: 14px 0 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 12px;
+    }
+
+    .stat-box {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 7px 16px;
+      text-align: center;
+      min-width: 82px;
+    }
+
+    .stat-value {
+      font-size: 1.4em;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .stat-label {
+      font-size: 0.68em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.6;
+    }
+
+    .timer-warning .stat-value {
+      color: #ff6b6b;
+      animation: blink 0.55s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    /* ── Level selector ── */
+    .level-select {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .level-btn {
+      padding: 7px 18px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.07);
+      color: #fff;
+      font-size: 0.88em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    .level-btn:hover { background: rgba(255,255,255,0.16); }
+
+    .level-btn.active {
+      background: rgba(255,217,61,0.22);
+      border-color: #ffd93d;
+      color: #ffd93d;
+    }
+
+    /* ── Game wrapper + grid ── */
+    .game-wrapper {
+      position: relative;
+      padding: 28px;          /* room for outer-border path lines */
+    }
+
+    .grid {
+      display: grid;
+      gap: var(--gap, 4px);
+      padding: var(--grid-pad, 10px);
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+    }
+
+    /* ── Tiles ── */
+    .tile {
+      width:  var(--ts, 52px);
+      height: var(--ts, 52px);
+      background: rgba(255,255,255,0.12);
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--emoji-sz, 28px);
+      cursor: pointer;
+      border: 2px solid rgba(255,255,255,0.06);
+      transition: background 0.14s, transform 0.14s, box-shadow 0.14s;
+      user-select: none;
+    }
+
+    .tile:hover:not(.empty) {
+      background: rgba(255,255,255,0.22);
+      transform: scale(1.07);
+    }
+
+    .tile.selected {
+      background: rgba(255,217,61,0.32);
+      border-color: #ffd93d;
+      transform: scale(1.1);
+      box-shadow: 0 0 18px rgba(255,217,61,0.55);
+    }
+
+    .tile.empty {
+      background: transparent;
+      border: 2px dashed rgba(255,255,255,0.05);
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .tile.removing {
+      animation: tileRemove 0.32s ease forwards;
+      pointer-events: none;
+    }
+
+    @keyframes tileRemove {
+      0%   { transform: scale(1.18); opacity: 1; }
+      100% { transform: scale(0);    opacity: 0; }
+    }
+
+    .tile.hint-glow {
+      animation: hintPulse 0.55s infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes hintPulse {
+      from { box-shadow: 0 0  8px rgba(77,200,255,0.3); border-color: rgba(77,200,255,0.4); }
+      to   { box-shadow: 0 0 26px rgba(77,200,255,0.9); border-color: #4dc8ff; transform: scale(1.1); }
+    }
+
+    /* ── SVG path overlay ── */
+    .path-svg {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+      z-index: 20;
+      overflow: visible;
+    }
+
+    .conn-path {
+      fill: none;
+      stroke: #ffd93d;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 8 5;
+      animation: pathFade 0.38s ease forwards;
+    }
+
+    @keyframes pathFade {
+      0%   { opacity: 0; stroke-width: 2; }
+      40%  { opacity: 1; stroke-width: 5; }
+      100% { opacity: 0; stroke-width: 2; }
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 25px;
+      font-size: 0.92em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+    }
+
+    .btn:active:not(:disabled) { transform: translateY(0); }
+
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-hint    { background: linear-gradient(135deg,#f093fb,#f5576c); color:#fff; }
+    .btn-shuffle { background: linear-gradient(135deg,#4facfe,#00f2fe); color:#0a2a3a; }
+    .btn-new     { background: linear-gradient(135deg,#6bcb77,#2e8b57); color:#fff; }
+
+    /* ── Overlays ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .overlay.hidden { display: none; }
+
+    .card {
+      background: linear-gradient(145deg,#1a1a2e,#16213e);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 24px;
+      padding: 42px 48px;
+      text-align: center;
+      max-width: 430px;
+      width: 92%;
+      animation: cardIn 0.32s ease;
+    }
+
+    @keyframes cardIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .card-emoji  { font-size: 3.2em; margin-bottom: 10px; }
+    .card-title  { font-size: 1.9em; font-weight: 800; margin-bottom: 8px; }
+    .card-sub    { font-size: 1.05em; opacity: 0.72; margin-bottom: 24px; line-height: 1.5; }
+
+    .btn-big {
+      background: linear-gradient(135deg,#6bcb77,#2e8b57);
+      color: #fff;
+      font-size: 1.1em;
+      padding: 14px 42px;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-big:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 22px rgba(107,203,119,0.45);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: rgba(255,107,107,0.9);
+      color: #fff;
+      padding: 11px 22px;
+      border-radius: 25px;
+      font-size: 0.93em;
+      font-weight: 600;
+      z-index: 500;
+      animation: toastIn 0.3s ease;
+      white-space: nowrap;
+    }
+
+    @keyframes toastIn {
+      from { transform: translateX(-50%) translateY(18px); opacity: 0; }
+      to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      width: min(96vw, 640px);
+      height: 6px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 3px;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #6bcb77, #4d96ff);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <h1 class="game-title">🍎 Fruits &amp; Vegetables Connect 🥦</h1>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-box">
+      <div class="stat-value" id="lvl-val">1</div>
+      <div class="stat-label">Level</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="score-val">0</div>
+      <div class="stat-label">Score</div>
+    </div>
+    <div class="stat-box" id="timer-box">
+      <div class="stat-value" id="timer-val">2:00</div>
+      <div class="stat-label">Time</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="remain-val">0</div>
+      <div class="stat-label">Pairs Left</div>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress-bar" style="width:100%"></div>
+  </div>
+
+  <!-- Level selector -->
+  <div class="level-select">
+    <button class="level-btn active" id="lvlbtn-0" onclick="selectLevel(0)">🌱 Easy</button>
+    <button class="level-btn"        id="lvlbtn-1" onclick="selectLevel(1)">🌿 Medium</button>
+    <button class="level-btn"        id="lvlbtn-2" onclick="selectLevel(2)">🌳 Hard</button>
+  </div>
+
+  <!-- Grid area -->
+  <div class="game-wrapper" id="wrapper">
+    <div class="grid" id="grid"></div>
+    <svg class="path-svg" id="path-svg" width="1" height="1"></svg>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-hint"    id="btn-hint"    onclick="useHint()">💡 Hint <small>(-50)</small></button>
+    <button class="btn btn-shuffle" id="btn-shuffle" onclick="useShuffle()">🔀 Shuffle <small>(-100)</small></button>
+    <button class="btn btn-new"                      onclick="newGame()">▶ New Game</button>
+  </div>
+
+  <!-- ── Overlays ── -->
+
+  <!-- Start -->
+  <div class="overlay" id="ov-start">
+    <div class="card">
+      <div class="card-emoji">🍎 🥦 🍊</div>
+      <div class="card-title">Fruits &amp; Vegetables</div>
+      <div class="card-sub">
+        Connect matching pairs of tiles!<br>
+        Two tiles can link if a path between them<br>
+        has <strong>at most 2 turns</strong>.<br><br>
+        Clear the board before time runs out.
+      </div>
+      <button class="btn-big" onclick="startGame()">▶ Play Now</button>
+    </div>
+  </div>
+
+  <!-- Win -->
+  <div class="overlay hidden" id="ov-win">
+    <div class="card">
+      <div class="card-emoji" id="win-emoji">🎉</div>
+      <div class="card-title" style="color:#6bcb77" id="win-title">Level Complete!</div>
+      <div class="card-sub" id="win-sub"></div>
+      <button class="btn-big" id="btn-next" onclick="nextLevel()">Next Level →</button>
+    </div>
+  </div>
+
+  <!-- Lose -->
+  <div class="overlay hidden" id="ov-lose">
+    <div class="card">
+      <div class="card-emoji">⏰</div>
+      <div class="card-title" style="color:#ff6b6b">Time's Up!</div>
+      <div class="card-sub" id="lose-sub"></div>
+      <button class="btn-big" onclick="newGame()">Try Again</button>
+    </div>
+  </div>
+
+  <script>
+  // ════════════════════════════════════════════════════
+  //  DATA
+  // ════════════════════════════════════════════════════
+  const ITEMS = [
+    // Interleaved fruits & vegetables so every level has both
+    '🍎','🥕','🍊','🥦','🍋','🌽','🍇','🥒',  // 0-7
+    '🍓','🍅','🍉','🧅','🍌','🧄','🥝','🫑',  // 8-15
+    '🍑','🥬','🍒','🍆','🍐','🥔','🍍','🫐',  // 16-23
+    '🥭','🥑',                                   // 24-25
+  ]; // 26 types
+
+  // rows × cols must equal types × 4  (4 tiles per type)
+  const LEVELS = [
+    { rows: 6,  cols:  8, types: 12, time: 120 }, // 48 tiles
+    { rows: 8,  cols: 10, types: 20, time: 180 }, // 80 tiles
+    { rows: 10, cols: 10, types: 25, time: 240 }, // 100 tiles
+  ];
+
+  // Tile display sizes per level
+  const SIZES = [
+    { ts: 56, emoji: 30, gap: 4, gpad: 10 },
+    { ts: 52, emoji: 28, gap: 4, gpad: 10 },
+    { ts: 48, emoji: 26, gap: 4, gpad:  8 },
+  ];
+
+  // ════════════════════════════════════════════════════
+  //  STATE
+  // ════════════════════════════════════════════════════
+  let level      = 0;
+  let grid       = [];   // [row][col] = item-index, or -1 if removed
+  let selected   = null; // {r, c}
+  let score      = 0;
+  let timeLeft   = 0;
+  let timerID    = null;
+  let gameActive = false;
+  let totalTiles = 0;
+  let hintHandles = { tiles: null, tid: null };
+
+  // ════════════════════════════════════════════════════
+  //  UTILITIES
+  // ════════════════════════════════════════════════════
+  // Animation / delay constants (must stay in sync with CSS durations)
+  const PATH_ANIM_MS        = 380;  // matches @keyframes pathFade (0.38s)
+  const TILE_REMOVAL_MS     = 330;  // matches @keyframes tileRemove (0.32s) + buffer
+  const HINT_DURATION_MS    = 2800; // how long hint-glow stays visible
+  const AUTO_SHUFFLE_MS     = 1400; // toast visible before auto-shuffle fires
+  // Layout constant: horizontal padding/margin that reduces available tile space
+  const SIDE_PADDING_PX     = 56;
+  // Visual offset (px) for outer-border path waypoints beyond the grid edge
+  const BORDER_OFFSET_PX    = 6;
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const randomIndex = (Math.random() * (i + 1)) | 0;
+      [a[i], a[randomIndex]] = [a[randomIndex], a[i]];
+    }
+    return a;
+  }
+
+  function formatTime(s) {
+    return `${(s / 60 | 0)}:${String(s % 60).padStart(2,'0')}`;
+  }
+
+  // ════════════════════════════════════════════════════
+  //  GRID CREATION
+  // ════════════════════════════════════════════════════
+  function buildGrid() {
+    const { rows, cols, types } = LEVELS[level];
+    const perType = (rows * cols) / types; // = 4
+    const tiles = [];
+    for (let t = 0; t < types; t++)
+      for (let i = 0; i < perType; i++)
+        tiles.push(t);
+    shuffle(tiles);
+    const g = [];
+    let tileIndex = 0;
+    for (let r = 0; r < rows; r++) {
+      g[r] = [];
+      for (let c = 0; c < cols; c++) g[r][c] = tiles[tileIndex++];
+    }
+    return g;
+  }
+
+  // ════════════════════════════════════════════════════
+  //  PATH-FINDING  (max 2 turns, outer border allowed)
+  // ════════════════════════════════════════════════════
+  function free(r, c) {
+    const { rows, cols } = LEVELS[level];
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return true; // border
+    return grid[r][c] === -1;
+  }
+
+  // Returns true if two cells in the same row/col have a clear corridor.
+  function clear(r1, c1, r2, c2) {
+    if (r1 !== r2 && c1 !== c2) return false;
+    if (r1 === r2) {
+      const lo = Math.min(c1, c2), hi = Math.max(c1, c2);
+      for (let c = lo + 1; c < hi; c++) if (!free(r1, c)) return false;
+    } else {
+      const lo = Math.min(r1, r2), hi = Math.max(r1, r2);
+      for (let r = lo + 1; r < hi; r++) if (!free(r, c1)) return false;
+    }
+    return true;
+  }
+
+  // Returns array of waypoints [{r,c}, …] or null.
+  function findPath(r1, c1, r2, c2) {
+    if (r1 === r2 && c1 === c2) return null;
+    const { rows, cols } = LEVELS[level];
+
+    // 0 turns
+    if (clear(r1, c1, r2, c2)) return [{r:r1,c:c1},{r:r2,c:c2}];
+
+    // 1 turn  (2 possible corners)
+    const corners = [{r:r1,c:c2},{r:r2,c:c1}];
+    for (const k of corners) {
+      if (free(k.r, k.c) && clear(r1,c1,k.r,k.c) && clear(k.r,k.c,r2,c2))
+        return [{r:r1,c:c1}, k, {r:r2,c:c2}];
+    }
+
+    // 2 turns via shared row  (including -1 and rows as virtual border rows)
+    for (let r = -1; r <= rows; r++) {
+      if (r === r1 || r === r2) continue;
+      if (free(r,c1) && free(r,c2) &&
+          clear(r1,c1,r,c1) && clear(r,c1,r,c2) && clear(r,c2,r2,c2))
+        return [{r:r1,c:c1},{r,c:c1},{r,c:c2},{r:r2,c:c2}];
+    }
+
+    // 2 turns via shared col
+    for (let c = -1; c <= cols; c++) {
+      if (c === c1 || c === c2) continue;
+      if (free(r1,c) && free(r2,c) &&
+          clear(r1,c1,r1,c) && clear(r1,c,r2,c) && clear(r2,c,r2,c2))
+        return [{r:r1,c:c1},{r:r1,c},{r:r2,c},{r:r2,c:c2}];
+    }
+
+    return null;
+  }
+
+  // Find any valid pair that still exists in the grid.
+  function anyPair() {
+    const { rows, cols } = LEVELS[level];
+    const cells = [];
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        if (grid[r][c] !== -1) cells.push({r, c, v: grid[r][c]});
+
+    for (let i = 0; i < cells.length; i++)
+      for (let j = i + 1; j < cells.length; j++)
+        if (cells[i].v === cells[j].v) {
+          const p = findPath(cells[i].r, cells[i].c, cells[j].r, cells[j].c);
+          if (p) return { a: cells[i], b: cells[j], path: p };
+        }
+    return null;
+  }
+
+  // ════════════════════════════════════════════════════
+  //  RENDERING
+  // ════════════════════════════════════════════════════
+  function applySize() {
+    const sz = SIZES[level];
+    // Clamp tile size to viewport width
+    const { cols } = LEVELS[level];
+    const vw = window.innerWidth;
+    const available = vw - SIDE_PADDING_PX - (cols - 1) * sz.gap - sz.gpad * 2;
+    const ts = Math.max(32, Math.min(sz.ts, (available / cols) | 0));
+    const emoji = Math.round(ts * 0.54);
+
+    const root = document.documentElement;
+    root.style.setProperty('--ts',       ts + 'px');
+    root.style.setProperty('--emoji-sz', emoji + 'px');
+    root.style.setProperty('--gap',      sz.gap + 'px');
+    root.style.setProperty('--grid-pad', sz.gpad + 'px');
+    return { ts, gap: sz.gap, gpad: sz.gpad };
+  }
+
+  function renderGrid() {
+    const { rows, cols } = LEVELS[level];
+    const gridEl = document.getElementById('grid');
+    gridEl.style.gridTemplateColumns = `repeat(${cols}, var(--ts))`;
+    gridEl.innerHTML = '';
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const v = grid[r][c];
+        const t = document.createElement('div');
+        if (v === -1) {
+          t.className = 'tile empty';
+        } else {
+          t.className = 'tile';
+          t.textContent = ITEMS[v];
+          t.dataset.r = r;
+          t.dataset.c = c;
+          t.addEventListener('click', onTileClick);
+          if (selected && selected.r === r && selected.c === c)
+            t.classList.add('selected');
+        }
+        gridEl.appendChild(t);
+      }
+    }
+
+    // Update SVG size to match wrapper
+    syncSvg();
+    updateStats();
+  }
+
+  function syncSvg() {
+    const w = document.getElementById('wrapper');
+    const svg = document.getElementById('path-svg');
+    svg.setAttribute('width',  w.offsetWidth);
+    svg.setAttribute('height', w.offsetHeight);
+  }
+
+  function tileEl(r, c) {
+    const { cols } = LEVELS[level];
+    return document.getElementById('grid').children[r * cols + c] || null;
+  }
+
+  // Convert grid coordinates (including virtual border -1/rows/cols) to
+  // pixel coordinates relative to the game-wrapper element.
+  function cellXY(r, c) {
+    const { rows, cols } = LEVELS[level];
+    const wrapper = document.getElementById('wrapper');
+    const gridEl  = document.getElementById('grid');
+    const wr = wrapper.getBoundingClientRect();
+    const gr = gridEl.getBoundingClientRect();
+
+    // Read computed tile size from the first child element
+    const firstTile = gridEl.firstElementChild;
+    const ts   = firstTile ? firstTile.offsetWidth : 52;
+    const gap  = parseInt(getComputedStyle(gridEl).columnGap || '4');
+    const gpad = parseInt(getComputedStyle(gridEl).paddingLeft || '10');
+
+    const gx = gr.left - wr.left; // grid left in wrapper-space
+    const gy = gr.top  - wr.top;
+
+    let x, y;
+    if (c < 0)          x = gx - BORDER_OFFSET_PX;
+    else if (c >= cols) x = gx + gpad + cols * (ts + gap) - gap + BORDER_OFFSET_PX;
+    else                x = gx + gpad + c * (ts + gap) + ts / 2;
+
+    if (r < 0)          y = gy - BORDER_OFFSET_PX;
+    else if (r >= rows) y = gy + gpad + rows * (ts + gap) - gap + BORDER_OFFSET_PX;
+    else                y = gy + gpad + r * (ts + gap) + ts / 2;
+
+    return { x, y };
+  }
+
+  // Draw path then call cb after animation
+  function animatePath(path, cb) {
+    const svg = document.getElementById('path-svg');
+    svg.innerHTML = '';
+    if (!path || path.length < 2) { cb && cb(); return; }
+
+    const pts = path.map(p => {
+      const {x, y} = cellXY(p.r, p.c);
+      return `${x},${y}`;
+    }).join(' ');
+
+    const poly = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    poly.setAttribute('points', pts);
+    poly.setAttribute('class',  'conn-path');
+    svg.appendChild(poly);
+
+    setTimeout(() => { svg.innerHTML = ''; cb && cb(); }, PATH_ANIM_MS);
+  }
+
+  // ════════════════════════════════════════════════════
+  //  STATS
+  // ════════════════════════════════════════════════════
+  function remaining() {
+    const { rows, cols } = LEVELS[level];
+    let n = 0;
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        if (grid[r][c] !== -1) n++;
+    return n;
+  }
+
+  function updateStats() {
+    const rem = remaining();
+    document.getElementById('remain-val').textContent = rem / 2 | 0; // pairs
+    const pct = (totalTiles - rem) / totalTiles * 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  // ════════════════════════════════════════════════════
+  //  TILE CLICK
+  // ════════════════════════════════════════════════════
+  function onTileClick(e) {
+    if (!gameActive) return;
+    const t = e.currentTarget;
+    const r = +t.dataset.r;
+    const c = +t.dataset.c;
+    if (grid[r][c] === -1) return;
+
+    clearHint();
+
+    if (!selected) {
+      selected = { r, c };
+      t.classList.add('selected');
+      return;
+    }
+
+    if (selected.r === r && selected.c === c) {
+      t.classList.remove('selected');
+      selected = null;
+      return;
+    }
+
+    const { r: r1, c: c1 } = selected;
+    const r2 = r, c2 = c;
+
+    // Deselect first tile
+    const el1 = tileEl(r1, c1);
+    if (el1) el1.classList.remove('selected');
+
+    if (grid[r1][c1] === grid[r2][c2]) {
+      const path = findPath(r1, c1, r2, c2);
+      if (path) {
+        selected = null;
+        // Show path then remove
+        animatePath(path, () => {
+          const a = tileEl(r1, c1);
+          const b = tileEl(r2, c2);
+          if (a) a.classList.add('removing');
+          if (b) b.classList.add('removing');
+          setTimeout(() => {
+            grid[r1][c1] = -1;
+            grid[r2][c2] = -1;
+            score += 100;
+            document.getElementById('score-val').textContent = score;
+            renderGrid();
+            if (remaining() === 0) { winLevel(); return; }
+            if (!anyPair())        { triggerAutoShuffle(); }
+          }, TILE_REMOVAL_MS);
+        });
+        return;
+      }
+    }
+
+    // No match — transfer selection
+    selected = { r: r2, c: c2 };
+    tileEl(r2, c2).classList.add('selected');
+  }
+
+  // ════════════════════════════════════════════════════
+  //  HINT & SHUFFLE
+  // ════════════════════════════════════════════════════
+  function clearHint() {
+    if (hintHandles.tiles) {
+      hintHandles.tiles.forEach(({ r, c }) => {
+        const el = tileEl(r, c);
+        if (el) el.classList.remove('hint-glow');
+      });
+      hintHandles.tiles = null;
+    }
+    if (hintHandles.tid) { clearTimeout(hintHandles.tid); hintHandles.tid = null; }
+  }
+
+  function useHint() {
+    if (!gameActive) return;
+    clearHint();
+    const pair = anyPair();
+    if (!pair) return;
+    score = Math.max(0, score - 50);
+    document.getElementById('score-val').textContent = score;
+    hintHandles.tiles = [pair.a, pair.b];
+    hintHandles.tiles.forEach(({ r, c }) => {
+      const el = tileEl(r, c);
+      if (el) el.classList.add('hint-glow');
+    });
+    hintHandles.tid = setTimeout(clearHint, HINT_DURATION_MS);
+  }
+
+  function useShuffle() {
+    if (!gameActive) return;
+    score = Math.max(0, score - 100);
+    document.getElementById('score-val').textContent = score;
+    doShuffle();
+  }
+
+  function doShuffle() {
+    const { rows, cols } = LEVELS[level];
+    const pos = [], vals = [];
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        if (grid[r][c] !== -1) { pos.push({r,c}); vals.push(grid[r][c]); }
+    shuffle(vals);
+    pos.forEach(({r,c}, i) => { grid[r][c] = vals[i]; });
+    selected = null;
+    clearHint();
+    renderGrid();
+    if (!anyPair()) doShuffle(); // recurse until valid state
+  }
+
+  function triggerAutoShuffle() {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = '🔀 No more moves — reshuffling!';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      doShuffle();
+      toast.remove();
+    }, AUTO_SHUFFLE_MS);
+  }
+
+  // ════════════════════════════════════════════════════
+  //  LEVEL / GAME FLOW
+  // ════════════════════════════════════════════════════
+  function selectLevel(idx) {
+    level = idx;
+    document.querySelectorAll('.level-btn').forEach((b, i) =>
+      b.classList.toggle('active', i === idx));
+  }
+
+  function startGame() {
+    document.getElementById('ov-start').classList.add('hidden');
+    newGame();
+  }
+
+  function newGame() {
+    clearInterval(timerID);
+    clearHint();
+    selected   = null;
+    score      = 0;
+
+    applySize();
+
+    const lc = LEVELS[level];
+    do { grid = buildGrid(); } while (!anyPair());
+
+    totalTiles = lc.rows * lc.cols;
+    timeLeft   = lc.time;
+    gameActive = true;
+
+    document.getElementById('lvl-val').textContent   = level + 1;
+    document.getElementById('score-val').textContent = '0';
+    document.getElementById('timer-val').textContent = formatTime(timeLeft);
+    document.getElementById('timer-box').classList.remove('timer-warning');
+
+    hide('ov-win'); hide('ov-lose');
+    renderGrid();
+
+    timerID = setInterval(tick, 1000);
+  }
+
+  function nextLevel() {
+    if (level < LEVELS.length - 1) selectLevel(level + 1);
+    hide('ov-win');
+    newGame();
+  }
+
+  function tick() {
+    timeLeft--;
+    document.getElementById('timer-val').textContent = formatTime(timeLeft);
+    if (timeLeft <= 20)
+      document.getElementById('timer-box').classList.add('timer-warning');
+    if (timeLeft <= 0) {
+      clearInterval(timerID);
+      gameActive = false;
+      document.getElementById('lose-sub').textContent = `Your score: ${score}`;
+      show('ov-lose');
+    }
+  }
+
+  function winLevel() {
+    clearInterval(timerID);
+    gameActive = false;
+    const bonus = timeLeft * 10;
+    score += bonus;
+    document.getElementById('score-val').textContent = score;
+
+    const last = level >= LEVELS.length - 1;
+    document.getElementById('win-emoji').textContent = last ? '🏆' : '🎉';
+    document.getElementById('win-title').textContent = last ? 'You Won!' : 'Level Complete!';
+    document.getElementById('win-sub').innerHTML =
+      `Score: <strong>${score}</strong><br>+${bonus} time bonus!`;
+
+    const nxt = document.getElementById('btn-next');
+    if (last) {
+      nxt.textContent = '🔁 Play Again';
+      nxt.onclick = () => { selectLevel(0); hide('ov-win'); newGame(); };
+    } else {
+      nxt.textContent = 'Next Level →';
+      nxt.onclick = nextLevel;
+    }
+    show('ov-win');
+  }
+
+  // ════════════════════════════════════════════════════
+  //  HELPERS
+  // ════════════════════════════════════════════════════
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+  window.addEventListener('resize', () => {
+    if (gameActive) { applySize(); renderGrid(); }
+  });
+  </script>
+</body>
+</html>
